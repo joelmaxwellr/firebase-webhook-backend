@@ -1,5 +1,5 @@
 
-const firebaseConfig = {
+{
   apiKey: "AIzaSyBI68oyZwP2ftIrNcEIusgx3zHh9AcouU8",
   authDomain: "firehueso-ed9e3.firebaseapp.com",
   databaseURL: "https://firehueso-ed9e3-default-rtdb.firebaseio.com",
@@ -8,4 +8,5 @@ const firebaseConfig = {
   messagingSenderId: "165804110750",
   appId: "1:165804110750:web:374846da2ab35fb69c1c8f",
   measurementId: "G-J4VQX4N1XG"
-};
+}
+
