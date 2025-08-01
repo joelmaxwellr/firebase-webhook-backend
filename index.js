@@ -7,8 +7,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
-// Inicializa Firebase Admin SDK con tu configuración
-const serviceAccount = require('./serviceAccountKey.json');
+// Leer la configuración de Firebase desde variable de entorno
+const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -17,10 +17,9 @@ admin.initializeApp({
 
 const db = admin.database();
 
-// Ruta GET para consultar las últimas 400 órdenes
 app.get('/webhook', async (req, res) => {
   try {
-    const ref = db.ref('ordenes'); // Asume que tus órdenes están bajo /ordenes
+    const ref = db.ref('ordenes');
     const snapshot = await ref.limitToLast(400).once('value');
     const data = snapshot.val();
 
