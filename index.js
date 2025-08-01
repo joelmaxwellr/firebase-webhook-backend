@@ -7,7 +7,16 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 
-// Leer la configuración de Firebase desde variable de entorno
+// Establecer timeout máximo de 9 segundos
+app.use((req, res, next) => {
+  res.setTimeout(9000, () => {
+    console.warn('Tiempo de respuesta excedido');
+    res.status(504).json({ error: 'Timeout del servidor' });
+  });
+  next();
+});
+
+// Inicializar Firebase desde variable de entorno
 const serviceAccount = JSON.parse(process.env.FIREBASE_CONFIG);
 
 admin.initializeApp({
@@ -17,23 +26,31 @@ admin.initializeApp({
 
 const db = admin.database();
 
+// Endpoint optimizado
 app.get('/webhook', async (req, res) => {
   try {
     const ref = db.ref('ordenes');
     const snapshot = await ref.limitToLast(400).once('value');
-    const data = snapshot.val();
 
-    if (!data) {
-      return res.status(404).json({ message: 'No hay datos disponibles' });
+    const rawData = snapshot.val();
+
+    if (!rawData) {
+      return res.json([]); // Respuesta vacía rápida
     }
 
-    res.json(data);
+    // Convertir objeto a array ordenada (más rápida de procesar)
+    const ordenes = Object.entries(rawData).map(([id, data]) => ({
+      id,
+      ...data
+    }));
+
+    res.json(ordenes);
   } catch (error) {
-    console.error('Error al leer desde Firebase:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    console.error('Error al leer datos:', error);
+    res.status(500).json({ error: 'Error en el servidor' });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
+  console.log(`Servidor corriendo en puerto ${PORT}`);
 });
