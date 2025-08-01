@@ -1,49 +1,40 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const admin = require("firebase-admin");
-const cors = require("cors");
+const express = require('express');
+const cors = require('cors');
+const admin = require('firebase-admin');
 
-const serviceAccount = require("./firebase-key.json");
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://fireapp-35650-default-rtdb.firebaseio.com" // reemplaza si es necesario
-});
-
-const db = admin.database();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(bodyParser.json());
 
-// Ruta POST para recibir mensajes del webhook (Callbell)
-app.post("/webhook", async (req, res) => {
-  try {
-    const message = req.body.payload?.message?.text || "Mensaje vacío";
+// Inicializa Firebase Admin SDK con tu configuración
+const serviceAccount = require('./serviceAccountKey.json');
 
-    return res.json({
-      success: true,
-      reply: `Mensaje recibido: ${message}`
-    });
-  } catch (error) {
-    console.error("Error en POST /webhook:", error);
-    return res.status(500).json({ error: "Error interno del servidor" });
-  }
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: "https://fireapp-35650-default-rtdb.firebaseio.com"
 });
 
-// Ruta GET para traer TODA la base de datos
-app.get("/webhook", async (req, res) => {
+const db = admin.database();
+
+// Ruta GET para consultar las últimas 400 órdenes
+app.get('/webhook', async (req, res) => {
   try {
-    const snapshot = await db.ref("/").once("value"); // Trae TODO
+    const ref = db.ref('ordenes'); // Asume que tus órdenes están bajo /ordenes
+    const snapshot = await ref.limitToLast(400).once('value');
     const data = snapshot.val();
-    return res.json({ success: true, data });
+
+    if (!data) {
+      return res.status(404).json({ message: 'No hay datos disponibles' });
+    }
+
+    res.json(data);
   } catch (error) {
-    console.error("Error en GET /webhook:", error);
-    return res.status(500).json({ error: "Error al consultar Firebase" });
+    console.error('Error al leer desde Firebase:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor escuchando en el puerto ${PORT}`);
+  console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
