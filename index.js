@@ -1,51 +1,49 @@
 const express = require("express");
+const bodyParser = require("body-parser");
 const admin = require("firebase-admin");
-const app = express();
-app.use(express.json());
+const cors = require("cors");
 
-// Inicializa Firebase con tu clave privada
 const serviceAccount = require("./firebase-key.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: "https://fireapp-35650-default-rtdb.firebaseio.com"
+  databaseURL: "https://fireapp-35650-default-rtdb.firebaseio.com" // reemplaza si es necesario
 });
 
 const db = admin.database();
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Webhook de Callbell
+app.use(cors());
+app.use(bodyParser.json());
+
+// Ruta POST para recibir mensajes del webhook (Callbell)
 app.post("/webhook", async (req, res) => {
-  const texto = req.body?.payload?.message?.text?.toLowerCase();
-
-  console.log("📩 Mensaje recibido:", texto);
-
-  if (!texto) {
-    return res.status(200).send("Mensaje vacío");
-  }
-
   try {
-    const snapshot = await db.ref("materiales").once("value");
-    const data = snapshot.val();
+    const message = req.body.payload?.message?.text || "Mensaje vacío";
 
-    const coincidencia = Object.values(data).find(item =>
-      item.nombre?.toLowerCase()?.includes(texto)
-    );
-
-    if (coincidencia) {
-      console.log("✅ Coincidencia encontrada:", coincidencia);
-    } else {
-      console.log("❌ No se encontró coincidencia");
-    }
-
-    res.sendStatus(200);
-  } catch (err) {
-    console.error("Error al consultar Firebase:", err);
-    res.sendStatus(500);
+    return res.json({
+      success: true,
+      reply: `Mensaje recibido: ${message}`
+    });
+  } catch (error) {
+    console.error("Error en POST /webhook:", error);
+    return res.status(500).json({ error: "Error interno del servidor" });
   }
 });
 
-// Puerto para Render
-const PORT = process.env.PORT || 3000;
+// Ruta GET para traer TODA la base de datos
+app.get("/webhook", async (req, res) => {
+  try {
+    const snapshot = await db.ref("/").once("value"); // Trae TODO
+    const data = snapshot.val();
+    return res.json({ success: true, data });
+  } catch (error) {
+    console.error("Error en GET /webhook:", error);
+    return res.status(500).json({ error: "Error al consultar Firebase" });
+  }
+});
+
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor escuchando en puerto ${PORT}`);
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
 });
