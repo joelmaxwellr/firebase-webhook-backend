@@ -1,89 +1,77 @@
-const express = require('express');
-const admin = require('firebase-admin');
-const cors = require('cors');
+const express = require("express");
+const cors = require("cors");
+const admin = require("firebase-admin");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
 app.use(cors());
-app.use(express.json());
 
-// Cargar credenciales de servicio desde variables de entorno
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-
+// Configura el SDK de Firebase usando variables de entorno
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: process.env.FIREBASE_DATABASE_URL,
+  credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+  databaseURL: process.env.FIREBASE_DATABASE_URL
 });
 
 const db = admin.database();
 
-// Endpoint básico de prueba
-app.get('/', (req, res) => {
-  res.send('✅ API Firebase funcionando');
+// Endpoint general de prueba
+app.get("/", (req, res) => {
+  res.send("✅ Backend conectado a Firebase");
 });
 
-// Últimas 400 órdenes (resumen básico)
-app.get('/orders/latest', async (req, res) => {
+// Últimas 400 órdenes resumidas
+app.get("/ordenes", async (req, res) => {
   try {
-    const snapshot = await db.ref('ordenes').limitToLast(400).once('value');
+    const snapshot = await db.ref("ordenes").limitToLast(400).once("value");
     const data = snapshot.val();
+    if (!data) return res.json([]);
 
-    // Transformamos el objeto a arreglo y devolvemos solo lo esencial
-    const resumen = Object.entries(data || {}).map(([key, value]) => ({
-      id: key,
-      cliente: value.cliente || 'N/D',
-      fecha: value.fecha || 'N/D',
-      total: value.total || 0,
-      estado: value.estado || 'pendiente',
-    }));
-
-    res.json(resumen.reverse()); // Invertir orden: más reciente primero
-  } catch (error) {
-    res.status(500).json({ error: 'Error al obtener órdenes' });
-  }
-});
-
-// Obtener una orden por ID
-app.get('/orders/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    const snapshot = await db.ref(`ordenes/${id}`).once('value');
-    const orden = snapshot.val();
-
-    if (!orden) return res.status(404).json({ error: 'Orden no encontrada' });
-
-    res.json(orden);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al buscar la orden' });
-  }
-});
-
-// Buscar órdenes por cliente
-app.get('/orders/cliente/:nombre', async (req, res) => {
-  try {
-    const nombre = req.params.nombre.toLowerCase();
-    const snapshot = await db.ref('ordenes').once('value');
-    const data = snapshot.val();
-
-    const resultados = Object.entries(data || {})
-      .filter(([, value]) =>
-        (value.cliente || '').toLowerCase().includes(nombre)
-      )
-      .map(([key, value]) => ({
-        id: key,
-        cliente: value.cliente || '',
-        fecha: value.fecha || '',
-        total: value.total || 0,
-        estado: value.estado || '',
+    const ordenes = Object.entries(data)
+      .reverse()
+      .map(([id, orden]) => ({
+        id,
+        cliente: orden.cliente || null,
+        total: orden.total || 0,
+        fecha: orden.fecha || null
       }));
 
-    res.json(resultados);
-  } catch (error) {
-    res.status(500).json({ error: 'Error al filtrar por cliente' });
+    res.json(ordenes);
+  } catch (err) {
+    console.error("Error al consultar ordenes:", err);
+    res.status(500).send("Error interno al consultar Firebase");
   }
 });
 
+// Filtrar por cliente
+app.get("/ordenes/cliente/:nombre", async (req, res) => {
+  const nombre = req.params.nombre.toLowerCase();
+  try {
+    const snapshot = await db.ref("ordenes").limitToLast(400).once("value");
+    const data = snapshot.val();
+    if (!data) return res.json([]);
+
+    const ordenes = Object.entries(data)
+      .map(([id, orden]) => ({ id, ...orden }))
+      .filter(o => o.cliente?.toLowerCase().includes(nombre));
+
+    res.json(ordenes);
+  } catch (err) {
+    res.status(500).send("Error interno");
+  }
+});
+
+// Últimas 10 órdenes detalladas
+app.get("/ordenes/detalle", async (req, res) => {
+  try {
+    const snapshot = await db.ref("ordenes").limitToLast(10).once("value");
+    const data = snapshot.val();
+    res.json(data || {});
+  } catch (err) {
+    res.status(500).send("Error interno");
+  }
+});
+
+// Puerto Render (usa PORT si existe o 3000 localmente)
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ Servidor escuchando en el puerto ${PORT}`);
+  console.log(`Servidor escuchando en puerto ${PORT}`);
 });
