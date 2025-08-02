@@ -27,6 +27,10 @@ const formatOrder = (id, order) => ({
   store: order.store || '',
 });
 
+app.get("/", (req, res) => {
+  res.send("✅ Backend conectado a Firebase");
+});
+
 // Obtener últimas N órdenes (resumidas)
 app.get('/orders/latest/:limit', async (req, res) => {
   try {
@@ -118,4 +122,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
+
 
