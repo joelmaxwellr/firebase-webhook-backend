@@ -28,7 +28,7 @@ const formatOrder = (id, order) => ({
 });
 
 app.get("/", (req, res) => {
-  res.send("✅ Backend conectado a Firebase");
+  res.status(200).send("✅ Backend conectado a Firebase");
 });
 
 // Obtener últimas N órdenes (resumidas)
@@ -122,5 +122,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
+
 
 
