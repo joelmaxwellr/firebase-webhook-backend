@@ -27,6 +27,7 @@ const formatOrder = (id, order) => ({
   store: order.store || '',
 });
 
+
 app.get("/", (req, res) => {
   res.status(200).json({
     mensaje: "✅ Backend conectado a Firebase",
@@ -121,11 +122,35 @@ app.get('/orders/search/:name', async (req, res) => {
   }
 });
 
+// Buscar por nuemero de orden
+app.get('/orders/orderNumber/:number', async (req, res) => {
+  try {
+    const orderNumberSearch = req.params.number.toLowerCase();
+    const snapshot = await db.ref('orders').once('value');
+    if (!snapshot.exists()) return res.status(200).json([]);
+
+    const data = snapshot.val();
+    const filtered = Object.entries(data)
+      .filter(([_, order]) =>
+        order.orderNumber &&
+        order.orderNumber.toString().toLowerCase().includes(orderNumberSearch)
+      )
+      .map(([id, order]) => formatOrder(id, order));
+
+    res.json(filtered.slice(0, 100)); // limitar resultados
+  } catch (error) {
+    console.error('Error /orders/orderNumber/:number:', error);
+    res.status(500).send('Error searching orders by orderNumber');
+  }
+});
+
+
 // Iniciar servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
+
 
 
 
